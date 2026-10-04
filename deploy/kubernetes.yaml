@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discord-bot-mcp
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: discord-bot-mcp
+  template:
+    metadata:
+      labels:
+        app: discord-bot-mcp
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 20
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: server
+          image: ghcr.io/nakanishi123/discord-bot-mcp:0.1.0
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: discord-bot-mcp
+          env:
+            - name: DISCORD_CHANNEL_IDS
+              value: "REPLACE_WITH_CHANNEL_ID"
+            - name: MCP_ALLOWED_HOSTS
+              value: "localhost,127.0.0.1,discord-bot-mcp,REPLACE_WITH_PUBLIC_HOST"
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discord-bot-mcp
+spec:
+  selector:
+    app: discord-bot-mcp
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+  type: ClusterIP
