@@ -38,7 +38,8 @@ async fn main() -> Result<()> {
             channels: Arc::clone(&channels),
         })
         .await
-        .map_err(|_| anyhow::anyhow!("Could not initialize Discord client"))?;
+        .map_err(discord_failure)
+        .context("Could not initialize Discord client")?;
     let discord = Discord {
         http: Arc::clone(&client.http),
         channels,
