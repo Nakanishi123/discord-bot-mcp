@@ -309,6 +309,7 @@ mod tests {
     async fn classifies_discord_errors_without_retrying_writes() -> anyhow::Result<()> {
         for (status, code) in [
             (StatusCode::NOT_FOUND, "not_found"),
+            (StatusCode::UNAUTHORIZED, "discord_unauthorized"),
             (StatusCode::FORBIDDEN, "permission_denied"),
             (StatusCode::INTERNAL_SERVER_ERROR, "discord_error"),
         ] {
