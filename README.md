@@ -55,7 +55,7 @@ IDは全てJSON文字列です。本文・添付などのDiscord投稿は信頼�
 
 通常投稿・返信とも、ユーザー・ロール・everyone・返信先へのメンションを無効にします。絵文字はUnicodeか `<:name:id>` / `<a:name:id>` 形式です。Discordのレート制限は共有serenity HTTPクライアントが処理します。タイムアウトなど結果不明の投稿をアプリから自動再送しません。再試行前に履歴を確認してください。
 
-引数不正はMCPのinvalid params、実行失敗は`isError: true`と`code`を返します。主な分類は`channel_not_allowed`、`not_found`、`permission_denied`、`unsupported_image`、`size_limit_exceeded`、`busy`、`timeout`、`discord_error`、`download_failed`です。
+引数不正はMCPのinvalid params、実行失敗は`isError: true`と`code`を返します。主な分類は`channel_not_allowed`、`not_found`、`discord_unauthorized`（Bot認証失敗）、`permission_denied`、`unsupported_image`、`size_limit_exceeded`、`busy`、`timeout`、`discord_error`、`download_failed`です。
 
 ## HTTP・運用
 

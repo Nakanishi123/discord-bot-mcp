@@ -11,6 +11,8 @@ pub enum ToolError {
     UnsupportedChannel,
     #[error("The requested resource was not found")]
     NotFound,
+    #[error("Discord Bot authentication failed; check the server Bot token")]
+    DiscordUnauthorized,
     #[error("Discord denied access")]
     PermissionDenied,
     #[error("Only JPEG and PNG attachments are supported")]
@@ -34,6 +36,7 @@ impl ToolError {
             Self::ForbiddenChannel => "channel_not_allowed",
             Self::UnsupportedChannel => "unsupported_channel",
             Self::NotFound => "not_found",
+            Self::DiscordUnauthorized => "discord_unauthorized",
             Self::PermissionDenied => "permission_denied",
             Self::UnsupportedImage => "unsupported_image",
             Self::TooLarge => "size_limit_exceeded",
@@ -65,7 +68,8 @@ impl From<serenity::Error> for ToolError {
             }
             match error.status_code().map(|status| status.as_u16()) {
                 Some(404) => return Self::NotFound,
-                Some(401 | 403) => return Self::PermissionDenied,
+                Some(401) => return Self::DiscordUnauthorized,
+                Some(403) => return Self::PermissionDenied,
                 _ => {}
             }
         }
