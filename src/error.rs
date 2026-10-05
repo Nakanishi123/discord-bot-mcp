@@ -86,3 +86,43 @@ impl From<reqwest::Error> for ToolError {
         }
     }
 }
+
+// GatewayとClientのDisplayは固定文言だけを返す。他のSDKエラーの本文やURLは出力しない。
+pub fn discord_failure(error: serenity::Error) -> anyhow::Error {
+    if let serenity::Error::Gateway(error) = &error {
+        return anyhow::anyhow!("Discord Gateway: {error}");
+    }
+    if let serenity::Error::Client(error) = &error {
+        return anyhow::anyhow!("Discord client: {error}");
+    }
+    let error = ToolError::from(error);
+    anyhow::anyhow!("{}: {error}", error.code())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retains_gateway_causes_without_exposing_other_sdk_details() {
+        for (error, expected) in [
+            (
+                serenity::gateway::GatewayError::InvalidAuthentication,
+                "Sent invalid authentication",
+            ),
+            (
+                serenity::gateway::GatewayError::DisallowedGatewayIntents,
+                "Disallowed gateway intents were provided",
+            ),
+        ] {
+            assert!(
+                discord_failure(serenity::Error::Gateway(error))
+                    .to_string()
+                    .contains(expected)
+            );
+        }
+        let error = discord_failure(serenity::Error::Other("private response and URL"));
+        assert!(error.to_string().contains("discord_error"));
+        assert!(!error.to_string().contains("private response"));
+    }
+}
