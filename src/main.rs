@@ -13,7 +13,10 @@ use serenity::{all::GatewayIntents, client::ClientBuilder, http::HttpBuilder};
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
 
-use crate::{config::Config, discord::Discord, gateway::Gateway, image::Images, mcp::Mcp};
+use crate::{
+    config::Config, discord::Discord, error::discord_failure, gateway::Gateway, image::Images,
+    mcp::Mcp,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -59,9 +62,12 @@ async fn main() -> Result<()> {
     });
     let result = tokio::select! {
         result = shutdown_signal() => result,
-        _ = &mut gateway => Err(anyhow::anyhow!("Discord Gateway stopped unexpectedly")),
-        _ = &mut http => Err(anyhow::anyhow!("HTTP server stopped unexpectedly")),
+        result = &mut gateway => Err(task_failure("Discord Gateway", result.map(|result| result.map_err(discord_failure)))),
+        result = &mut http => Err(task_failure("HTTP server", result.map(|result| result.map_err(|error| anyhow::anyhow!("HTTP I/O error: {:?}", error.kind()))))),
     };
+    if let Err(error) = &result {
+        tracing::error!(reason = %format_args!("{error:#}"), "Server stopped");
+    }
     tracing::info!("Shutting down");
     cancellation.cancel();
     let cleanup = async {
@@ -84,6 +90,21 @@ async fn main() -> Result<()> {
     result
 }
 
+fn task_failure(task: &str, result: Result<Result<()>, tokio::task::JoinError>) -> anyhow::Error {
+    match result {
+        Ok(Ok(())) => anyhow::anyhow!("{task} stopped unexpectedly without an error"),
+        Ok(Err(error)) => error.context(format!("{task} failed")),
+        Err(error) => {
+            // panicのペイロードには秘密情報が含まれ得るため、終了種別だけを記録する。
+            if error.is_panic() {
+                anyhow::anyhow!("{task} task panicked")
+            } else {
+                anyhow::anyhow!("{task} task was cancelled")
+            }
+        }
+    }
+}
+
 async fn shutdown_signal() -> Result<()> {
     #[cfg(unix)]
     {
@@ -101,3 +122,34 @@ async fn shutdown_signal() -> Result<()> {
 
 #[cfg(test)]
 mod test_support;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn distinguishes_task_completion_failure_and_cancellation() -> Result<()> {
+        assert!(
+            task_failure("HTTP server", Ok(Ok(())))
+                .to_string()
+                .contains("without an error")
+        );
+        let error = task_failure(
+            "Discord Gateway",
+            Ok(Err(discord_failure(serenity::Error::Gateway(
+                serenity::gateway::GatewayError::DisallowedGatewayIntents,
+            )))),
+        );
+        let reason = format!("{error:#}");
+        assert!(reason.contains("Discord Gateway failed"));
+        assert!(reason.contains("Disallowed gateway intents"));
+        let handle = tokio::spawn(std::future::pending::<Result<()>>());
+        handle.abort();
+        assert!(
+            task_failure("HTTP server", handle.await)
+                .to_string()
+                .contains("was cancelled")
+        );
+        Ok(())
+    }
+}
