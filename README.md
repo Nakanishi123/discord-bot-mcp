@@ -80,7 +80,7 @@ multi-stage buildとdistrolessランタイムを使用し、非rootで起動し�
 
 Deploymentは1 replica・Recreateで、更新時に短い停止が発生します。ServiceはClusterIPです。メモリ上限512Miは初期設定であり、画像サイズと同時実行数、利用クライアント数に合わせて実測・調整してください。
 
-CIはformat、Clippy、テスト、コンテナビルドを行います。`v0.1.0`のようなCargo.tomlと一致するversionタグをpushすると、GHCRへ`ghcr.io/<owner>/<repository>:0.1.0`を公開します。必要に応じてGitHub PackagesでパッケージをPublicに設定してください。**ライセンスは未選定です。OSSとして公開する前に所有者が選定し、LICENSEとCargo.tomlへ反映してください。**
+CIはformat、Clippy、テスト、コンテナビルドを行います。`v0.1.0`のようなCargo.tomlと一致するversionタグをpushすると、GHCRへ`ghcr.io/<owner>/<repository>:0.1.0`を公開します。必要に応じてGitHub PackagesでパッケージをPublicに設定してください。ライセンスは[MIT](LICENSE)です。コンテナには`/usr/share/licenses/discord-bot-mcp/LICENSE`として同梱します。
 
 ## 検証
 
