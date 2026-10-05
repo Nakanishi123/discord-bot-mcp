@@ -31,6 +31,8 @@ pub fn router(server: Mcp, config: &Config, cancellation: CancellationToken) -> 
         Arc::new(LocalSessionManager::default()),
         transport,
     );
+    // mainは許可チャンネルの検証後にHTTP受付を開始するため、受付中のプローブは200を返す。
+    // Gatewayの一時切断中もREST操作を提供するため、接続状態はreadinessの条件に含めない。
     Router::new()
         .nest_service("/mcp", service)
         .layer(middleware::from_fn_with_state(
